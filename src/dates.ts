@@ -35,3 +35,9 @@ export function weekdayLabels(): string[] {
 export function formatMonthLabel(year: number, monthIndex0: number): string {
   return `${monthIndex0 + 1}月 ${year}`
 }
+
+/** 顯示用：4月17日 */
+export function formatChineseDay(iso: string): string {
+  const d = parseISOToLocal(iso)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}

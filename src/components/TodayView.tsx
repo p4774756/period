@@ -1,19 +1,19 @@
 import {
   bodyPhaseLine,
-  riskHeadline,
   riskNote,
+  todayStatusChip,
 } from '../copy'
-import { diffDays, todayISO } from '../dates'
+import { diffDays, formatChineseDay, todayISO } from '../dates'
 import type { CyclePrediction } from '../cycleMath'
 import { inferBodyPhase, inferRiskLevel } from '../phase'
 import type { AppState } from '../types'
 
-function formatRelative(label: string, target: string | null): string {
-  if (!target) return `${label}：尚無法推估（請先紀錄經期）`
+function formatCountdown(target: string | null): string | null {
+  if (!target) return null
   const n = diffDays(todayISO(), target)
-  if (n === 0) return `${label}：今天`
-  if (n > 0) return `${label}：${n} 天之後`
-  return `${label}：已過 ${-n} 天`
+  if (n === 0) return '今天'
+  if (n > 0) return `還有 ${n} 天`
+  return `已過 ${-n} 天`
 }
 
 export function TodayView({
@@ -28,62 +28,62 @@ export function TodayView({
   const goal = state.settings.goal
   const phase = inferBodyPhase(prediction)
   const risk = inferRiskLevel(prediction)
-  const cycleDayText =
-    prediction.cycleDay != null
-      ? `週期第 ${prediction.cycleDay} 天`
-      : '尚未建立週期資訊'
+  const ov = formatCountdown(prediction.predictedOvulation)
+  const pd = formatCountdown(prediction.nextPeriodStart)
 
   return (
     <div className="panel today">
       <header className="today-header">
-        <div>
-          <p className="muted small">{todayISO().replace(/-/g, '／')}</p>
-          <h1>今天</h1>
-        </div>
+        <h1 className="today-title">{formatChineseDay(todayISO())}</h1>
         <button type="button" className="ghost" onClick={onOpenSettings}>
           設定
         </button>
       </header>
 
-      <section className="card hero-card">
-        <p className="risk-label">{riskHeadline(goal, risk)}</p>
-        <p className="muted small">{riskNote(goal)}</p>
+      <section className="card hero-card hero-card--minimal">
+        <p className="status-chip">{todayStatusChip(goal, risk, phase)}</p>
 
-        <h2 className="predict-primary">
-          {formatRelative('預估排卵日', prediction.predictedOvulation)}
-        </h2>
-        <p className="predict-secondary">
-          {formatRelative('預估下次經期開始', prediction.nextPeriodStart)}
-        </p>
-
-        <p className="muted tiny">
-          週期平均 {prediction.avgCycleDays} 天
-          {prediction.cycleFromHistory ? '（最近紀錄）' : '（預設值）'}
-          ・經期平均 {prediction.avgPeriodDays} 天
-          {prediction.periodFromHistory ? '（最近紀錄）' : '（預設值）'}
-        </p>
-      </section>
-
-      <section className="card phase-card">
-        <div className="phase-row">
-          <div>
-            <h3>身體階段（推估）</h3>
-            <p className="phase-text">{bodyPhaseLine(goal, phase)}</p>
+        <div className="countdown-block">
+          <div className="countdown-row">
+            <span className="countdown-label">排卵（推估）</span>
+            <span className="countdown-value">
+              {ov ?? '—'}
+            </span>
           </div>
-          <div className="cycle-day-pill">
+          <div className="countdown-row">
+            <span className="countdown-label">經期（推估）</span>
+            <span className="countdown-value">
+              {pd ?? '—'}
+            </span>
+          </div>
+        </div>
+
+        <div className="cycle-strip">
+          <div className="cycle-day-pill" aria-label="週期天數">
             <span className="big-num">
               {prediction.cycleDay != null ? prediction.cycleDay : '—'}
             </span>
-            <span className="tiny-label">週期天數</span>
+            <span className="tiny-label">第幾天</span>
           </div>
         </div>
-        <p className="muted small">{cycleDayText}</p>
       </section>
 
-      <p className="muted small center foot-hint">
-        到「日曆」點選日期即可標記經期。紀錄越完整，預測越穩定（以最近 3
-        次完整資料為優先）。
-      </p>
+      <details className="today-details">
+        <summary>詳細說明</summary>
+        <div className="details-body">
+          <p className="muted small">{riskNote(goal)}</p>
+          <p className="muted small">{bodyPhaseLine(goal, phase)}</p>
+          <p className="muted tiny">
+            週期平均 {prediction.avgCycleDays} 天
+            {prediction.cycleFromHistory ? '（依紀錄）' : '（預設）'}・經期平均{' '}
+            {prediction.avgPeriodDays} 天
+            {prediction.periodFromHistory ? '（依紀錄）' : '（預設）'}
+          </p>
+          <p className="muted small">
+            在下方「日曆」點日期可標記經期；紀錄越多，預測越準。
+          </p>
+        </div>
+      </details>
     </div>
   )
 }

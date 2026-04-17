@@ -11,16 +11,29 @@ export function goalLabel(goal: UserGoal): string {
   }
 }
 
-export function riskHeadline(
+/** 首頁一列狀態：字少 */
+export function todayStatusChip(
   goal: UserGoal,
   level: 'low' | 'mid' | 'high',
+  phase: 'period' | 'follicular' | 'fertile' | 'luteal',
 ): string {
   if (goal === 'tracking') {
-    return level === 'high' ? '接近預估排卵日附近' : '一般週期階段'
+    return phaseShortLabel(phase)
   }
-  const risk =
-    level === 'low' ? '低' : level === 'mid' ? '中' : '高'
-  return `${risk}－懷孕機率（推估）`
+  const r = level === 'low' ? '低' : level === 'mid' ? '中' : '高'
+  return `懷孕機率（推估）${r}`
+}
+
+export function phaseShortLabel(
+  phase: 'period' | 'follicular' | 'fertile' | 'luteal',
+): string {
+  const m = {
+    period: '經期中',
+    follicular: '濾泡期',
+    fertile: '接近排卵',
+    luteal: '黃體期',
+  }
+  return m[phase]
 }
 
 export function riskNote(goal: UserGoal): string {
