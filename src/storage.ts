@@ -11,7 +11,13 @@ function parseState(raw: unknown): AppState {
   if (!isRecord(raw)) return base
 
   const settingsIn = raw.settings
-  if (!isRecord(settingsIn)) return { ...base, periodDays: parsePeriodDays(raw.periodDays) }
+  if (!isRecord(settingsIn)) {
+    return {
+      ...base,
+      periodDays: parsePeriodDays(raw.periodDays),
+      dayNotes: parseDayNotes(raw.dayNotes),
+    }
+  }
 
   const settings = {
     ...defaultSettings,
@@ -20,8 +26,20 @@ function parseState(raw: unknown): AppState {
 
   const periodDays = parsePeriodDays(raw.periodDays)
   const notificationSent = parseDedupe(raw.notificationSent)
+  const dayNotes = parseDayNotes(raw.dayNotes)
 
-  return { settings, periodDays, notificationSent }
+  return { settings, periodDays, notificationSent, dayNotes }
+}
+
+function parseDayNotes(v: unknown): Record<string, string> {
+  if (!isRecord(v)) return {}
+  const out: Record<string, string> = {}
+  for (const [k, val] of Object.entries(v)) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof val === 'string') {
+      out[k] = val
+    }
+  }
+  return out
 }
 
 function parsePeriodDays(v: unknown): string[] {

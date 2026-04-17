@@ -80,7 +80,7 @@ export function TodayView({
             {prediction.periodFromHistory ? '（依紀錄）' : '（預設）'}
           </p>
           <p className="muted small">
-            在下方「日曆」點日期可標記經期；紀錄越多，預測越準。
+            在「日曆」點經期開始日會自動帶出平均天數；點已標記日可整段取消。紀錄越多越準。
           </p>
         </div>
       </details>

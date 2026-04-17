@@ -229,6 +229,7 @@ export function SettingsView({
                 settings: { ...defaultSettings },
                 periodDays: [],
                 notificationSent: {},
+                dayNotes: {},
               })
               setImportMsg('已清除本地紀錄。')
             }

@@ -1,4 +1,11 @@
-import { addDays, diffDays, parseISOToLocal, todayISO } from './dates'
+import {
+  addDays,
+  diffDays,
+  enumerateInclusive,
+  lastDayOfCalendarMonth,
+  parseISOToLocal,
+  todayISO,
+} from './dates'
 import type { AppSettings } from './types'
 
 export interface PeriodRange {
@@ -28,6 +35,62 @@ export function periodRangesFromDays(periodDays: string[]): PeriodRange[] {
     i = j
   }
   return ranges
+}
+
+/** 與某曆月（YYYY-MM）有交集的經期區間 */
+export function rangesOverlappingCalendarMonth(
+  ranges: PeriodRange[],
+  ym: string,
+): PeriodRange[] {
+  const first = `${ym}-01`
+  const last = lastDayOfCalendarMonth(ym)
+  return ranges.filter((r) => r.start <= last && r.end >= first)
+}
+
+/**
+ * 若從 newBlockStart 起連續加入 blockDayCount 天，是否會在「這段新區間所經過的任一曆月」
+ * 出現兩段以上不相連的經期（同一月內兩次出血區間）。
+ */
+export function wouldCreateSeparatePeriodInSameMonth(
+  periodDays: string[],
+  newBlockStart: string,
+  blockDayCount: number,
+): boolean {
+  const toAdd: string[] = []
+  for (let i = 0; i < blockDayCount; i++) {
+    toAdd.push(addDays(newBlockStart, i))
+  }
+  const merged = [...new Set([...periodDays, ...toAdd])].sort()
+  const ranges = periodRangesFromDays(merged)
+  const months = new Set(toAdd.map((d) => d.slice(0, 7)))
+  for (const ym of months) {
+    if (rangesOverlappingCalendarMonth(ranges, ym).length > 1) {
+      return true
+    }
+  }
+  return false
+}
+
+/** 該日在目前週期中的天數（最近一次經期開始為第 1 天）；無紀錄則 null */
+export function cycleDayNumberForDate(
+  iso: string,
+  periodDays: string[],
+): number | null {
+  const ranges = periodRangesFromDays(periodDays)
+  if (ranges.length === 0) return null
+  const past = ranges.filter((r) => r.start <= iso)
+  if (past.length === 0) return null
+  const cycleStart = past[past.length - 1].start
+  return diffDays(cycleStart, iso) + 1
+}
+
+/** 推估受孕期（排卵前 5 天至排卵後 1 日，僅供日曆顯示） */
+export function fertileWindowIsoDates(
+  prediction: CyclePrediction,
+): string[] {
+  if (!prediction.predictedOvulation) return []
+  const ov = prediction.predictedOvulation
+  return enumerateInclusive(addDays(ov, -5), addDays(ov, 1))
 }
 
 function roundAvg(nums: number[]): number {
