@@ -15,6 +15,7 @@ export function SettingsView({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const appVersion = __APP_VERSION__
 
   const s = state.settings
 
@@ -247,6 +248,7 @@ export function SettingsView({
             {p}
           </p>
         ))}
+        <p className="muted small settings-version">版本 v{appVersion}</p>
       </section>
     </div>
   )

@@ -12,6 +12,7 @@ import {
   cycleDayNumberForDate,
   fertileWindowIsoDates,
   periodRangesFromDays,
+  projectedPeriodRanges,
   type CyclePrediction,
 } from '../cycleMath'
 import type { AppSettings, WeekStart } from '../types'
@@ -86,6 +87,18 @@ export function CalendarView({
 
   const periodSet = useMemo(() => new Set(periodDays), [periodDays])
   const ranges = useMemo(() => periodRangesFromDays(periodDays), [periodDays])
+  const projectedRanges = useMemo(
+    () => projectedPeriodRanges(prediction, 12),
+    [prediction],
+  )
+  const projectedSet = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of projectedRanges) {
+      const block = enumerateDates(r.start, r.end)
+      for (const d of block) s.add(d)
+    }
+    return s
+  }, [projectedRanges])
   const fertileSet = useMemo(
     () => new Set(fertileWindowIsoDates(prediction)),
     [prediction],
@@ -153,6 +166,15 @@ export function CalendarView({
     return null
   }
 
+  function dayNumberInProjected(iso: string): number | null {
+    for (const r of projectedRanges) {
+      if (iso >= r.start && iso <= r.end) {
+        return diffDays(r.start, iso) + 1
+      }
+    }
+    return null
+  }
+
   function cellClass(iso: string | null): string {
     if (!iso) return 'cal-cell empty'
     const classes = ['cal-cell']
@@ -160,6 +182,13 @@ export function CalendarView({
     if (periodSet.has(iso)) {
       if (settings.calendarShowPeriod) classes.push('is-period')
       else classes.push('is-period-hidden')
+    }
+    if (
+      settings.calendarShowPredictPeriodStart &&
+      projectedSet.has(iso) &&
+      !periodSet.has(iso)
+    ) {
+      classes.push('is-predict-period-fill')
     }
     if (dayNotes[iso]) classes.push('has-note')
     if (
@@ -231,6 +260,7 @@ export function CalendarView({
             return <div key={`e-${idx}`} className={cellClass(null)} />
           }
           const periodDayIdx = dayNumberInPeriod(iso)
+          const projectedDayIdx = dayNumberInProjected(iso)
           const cycleNum = cycleDayNumberForDate(iso, periodDays)
           const showCycleNum =
             settings.calendarShowCycleDay && cycleNum != null
@@ -268,6 +298,12 @@ export function CalendarView({
                 settings.calendarShowPeriod &&
                 periodDayIdx != null && (
                   <span className="cal-period-idx">{periodDayIdx}</span>
+                )}
+              {!showCycleNum &&
+                settings.calendarShowPredictPeriodStart &&
+                periodDayIdx == null &&
+                projectedDayIdx != null && (
+                  <span className="cal-period-idx">{projectedDayIdx}</span>
                 )}
               {showOvIc && (
                 <span className="cal-cell-ic cal-cell-ic-ov" title="排卵日（推估）">
@@ -427,4 +463,18 @@ export function CalendarView({
 
 function addMonths(d: Date, delta: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + delta, 1)
+}
+
+function enumerateDates(start: string, end: string): string[] {
+  const out: string[] = []
+  let cur = start
+  let guard = 0
+  while (guard++ < 62) {
+    out.push(cur)
+    if (cur === end) break
+    const d = parseISOToLocal(cur)
+    d.setDate(d.getDate() + 1)
+    cur = toISODateLocal(d)
+  }
+  return out
 }

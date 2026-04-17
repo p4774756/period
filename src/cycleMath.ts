@@ -93,6 +93,24 @@ export function fertileWindowIsoDates(
   return enumerateInclusive(addDays(ov, -5), addDays(ov, 1))
 }
 
+/** 從 nextPeriodStart 開始，往後推估多個經期區塊（預設 12 次） */
+export function projectedPeriodRanges(
+  prediction: CyclePrediction,
+  count = 12,
+): PeriodRange[] {
+  if (!prediction.nextPeriodStart) return []
+  const ranges: PeriodRange[] = []
+  let start = prediction.nextPeriodStart
+  const span = Math.max(1, prediction.avgPeriodDays)
+  const cycle = Math.max(1, prediction.avgCycleDays)
+  for (let i = 0; i < count; i++) {
+    const end = addDays(start, span - 1)
+    ranges.push({ start, end })
+    start = addDays(start, cycle)
+  }
+  return ranges
+}
+
 function roundAvg(nums: number[]): number {
   if (nums.length === 0) return 0
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length)

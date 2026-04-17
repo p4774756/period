@@ -1,0 +1,13 @@
+---
+description: Auto verify then commit and push
+alwaysApply: true
+---
+
+# 自動驗證與提交流程
+
+- 每次完成功能修改後，先執行 `npm run build` 與 `npm run lint`。
+- 只有兩者都成功時，才進行 `git add -A`、`git commit`、`git push`。
+- Commit 訊息需簡潔，說明「為什麼改」與主要結果。
+- 若檢查失敗，先修正再重跑，不要推送失敗狀態。
+- 若使用者明確要求「不要 commit/push」或「先討論」，則暫停自動提交。
+

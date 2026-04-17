@@ -426,6 +426,11 @@ button.wide {
   box-shadow: inset 0 0 0 2px var(--predict-period);
 }
 
+.cal-cell.is-predict-period-fill:not(.is-period) {
+  background: color-mix(in srgb, var(--predict-period) 14%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--predict-period) 45%, var(--border));
+}
+
 .cal-cell.is-predict-ovulation {
   box-shadow: inset 0 0 0 2px var(--predict-ovulation);
 }
@@ -916,4 +921,10 @@ button.wide {
 
 .disclaimer p {
   margin: 0.35rem 0 0;
+}
+
+.settings-version {
+  margin-top: 0.75rem !important;
+  font-weight: 600;
+  text-align: right;
 }
