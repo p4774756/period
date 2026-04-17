@@ -6,7 +6,9 @@ import {
 import { diffDays, formatChineseDay, todayISO } from '../dates'
 import type { CyclePrediction } from '../cycleMath'
 import { inferBodyPhase, inferRiskLevel } from '../phase'
-import type { AppState } from '../types'
+import { useState } from 'react'
+import type { AppSettings, AppState, MascotAnimal, ThemeName } from '../types'
+import { MascotIcon } from './MascotIcon'
 
 function formatCountdown(target: string | null): string | null {
   if (!target) return null
@@ -19,28 +21,37 @@ function formatCountdown(target: string | null): string | null {
 export function TodayView({
   state,
   prediction,
-  onOpenSettings,
+  onPatchStyle,
 }: {
   state: AppState
   prediction: CyclePrediction
-  onOpenSettings: () => void
+  onPatchStyle: (p: Partial<AppSettings>) => void
 }) {
   const goal = state.settings.goal
   const phase = inferBodyPhase(prediction)
   const risk = inferRiskLevel(prediction)
   const ov = formatCountdown(prediction.predictedOvulation)
   const pd = formatCountdown(prediction.nextPeriodStart)
+  const [showStyleModal, setShowStyleModal] = useState(false)
+
+  const animals: MascotAnimal[] = ['rabbit', 'cat', 'bear', 'dog', 'panda', 'fox']
 
   return (
     <div className="panel today">
       <header className="today-header">
         <h1 className="today-title">{formatChineseDay(todayISO())}</h1>
-        <button type="button" className="ghost" onClick={onOpenSettings}>
-          設定
-        </button>
       </header>
 
       <section className="card hero-card hero-card--minimal">
+        <button
+          type="button"
+          className="mascot-fab"
+          onClick={() => setShowStyleModal(true)}
+          aria-label="切換可愛動物與主題"
+          title="切換可愛動物與主題"
+        >
+          <MascotIcon animal={state.settings.mascotAnimal} className="mascot-svg mascot-svg-fab" />
+        </button>
         <p className="status-chip">{todayStatusChip(goal, risk, phase)}</p>
 
         <div className="countdown-block">
@@ -84,6 +95,74 @@ export function TodayView({
           </p>
         </div>
       </details>
+
+      {showStyleModal && (
+        <div
+          className="cal-sheet-backdrop"
+          role="presentation"
+          onClick={() => setShowStyleModal(false)}
+        >
+          <div
+            className="cal-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="選擇動物與主題"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="cal-sheet-date muted small">可愛動物與主題</p>
+            <p className="muted tiny cal-sheet-hint">點兔子可隨時切換。</p>
+
+            <div className="style-grid">
+              {animals.map((animal) => (
+                <button
+                  key={animal}
+                  type="button"
+                  className={
+                    state.settings.mascotAnimal === animal
+                      ? 'style-chip active'
+                      : 'style-chip'
+                  }
+                  onClick={() => onPatchStyle({ mascotAnimal: animal })}
+                >
+                  <MascotIcon animal={animal} className="mascot-svg mascot-svg-chip" />
+                </button>
+              ))}
+            </div>
+
+            <div className="theme-grid">
+              {(
+                [
+                  ['sakura', '櫻花'],
+                  ['mint', '薄荷'],
+                  ['sunset', '奶油'],
+                  ['night', '夜空'],
+                ] as const
+              ).map(([theme, label]) => (
+                <button
+                  key={theme}
+                  type="button"
+                  className={
+                    state.settings.themeName === theme
+                      ? 'theme-chip active'
+                      : 'theme-chip'
+                  }
+                  onClick={() => onPatchStyle({ themeName: theme as ThemeName })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="cal-sheet-btn cal-sheet-btn-cancel"
+              onClick={() => setShowStyleModal(false)}
+            >
+              完成
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

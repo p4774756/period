@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CalendarDays, Flower2, Settings } from 'lucide-react'
 import { CalendarView } from './components/CalendarView'
 import { SettingsView } from './components/SettingsView'
 import { TodayView } from './components/TodayView'
@@ -26,6 +27,10 @@ export default function App() {
   useEffect(() => {
     saveState(state)
   }, [state])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.settings.themeName
+  }, [state.settings.themeName])
 
   const prediction = useMemo(
     () =>
@@ -150,7 +155,12 @@ export default function App() {
           <TodayView
             state={state}
             prediction={prediction}
-            onOpenSettings={() => setTab('settings')}
+            onPatchStyle={(p) =>
+              setState((s) => ({
+                ...s,
+                settings: { ...s.settings, ...p },
+              }))
+            }
           />
         )}
         {tab === 'calendar' && (
@@ -227,9 +237,7 @@ export default function App() {
           className={tab === 'today' ? 'nav-item active' : 'nav-item'}
           onClick={() => setTab('today')}
         >
-          <span className="nav-ic" aria-hidden>
-            🌸
-          </span>
+          <Flower2 className="nav-ic" size={20} strokeWidth={2.1} aria-hidden />
           今天
         </button>
         <button
@@ -237,9 +245,7 @@ export default function App() {
           className={tab === 'calendar' ? 'nav-item active' : 'nav-item'}
           onClick={() => setTab('calendar')}
         >
-          <span className="nav-ic" aria-hidden>
-            📅
-          </span>
+          <CalendarDays className="nav-ic" size={20} strokeWidth={2.1} aria-hidden />
           日曆
         </button>
         <button
@@ -247,9 +253,7 @@ export default function App() {
           className={tab === 'settings' ? 'nav-item active' : 'nav-item'}
           onClick={() => setTab('settings')}
         >
-          <span className="nav-ic" aria-hidden>
-            ⚙︎
-          </span>
+          <Settings className="nav-ic" size={20} strokeWidth={2.1} aria-hidden />
           設定
         </button>
       </nav>

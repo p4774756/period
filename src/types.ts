@@ -1,4 +1,6 @@
 export type UserGoal = 'contraception' | 'trying' | 'tracking'
+export type MascotAnimal = 'rabbit' | 'cat' | 'bear' | 'dog' | 'panda' | 'fox'
+export type ThemeName = 'sakura' | 'mint' | 'sunset' | 'night'
 
 /** 日曆每週起始列 */
 export type WeekStart = 'monday' | 'sunday'
@@ -20,6 +22,8 @@ export interface AppSettings {
   calendarShowOvulation: boolean
   calendarShowFertileWindow: boolean
   calendarShowPredictPeriodStart: boolean
+  mascotAnimal: MascotAnimal
+  themeName: ThemeName
 }
 
 export interface AppState {
@@ -48,6 +52,8 @@ export const defaultSettings: AppSettings = {
   calendarShowOvulation: true,
   calendarShowFertileWindow: true,
   calendarShowPredictPeriodStart: true,
+  mascotAnimal: 'rabbit',
+  themeName: 'sakura',
 }
 
 export function createInitialState(): AppState {
