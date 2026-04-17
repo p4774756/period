@@ -1,0 +1,70 @@
+:root {
+  --text: #4b4758;
+  --text-strong: #2a2635;
+  --muted: #7a7389;
+  --bg: #faf8fc;
+  --surface: #ffffff;
+  --surface-2: #f3f0f7;
+  --border: #e8e3ef;
+  --shadow-sm: 0 6px 20px rgba(42, 38, 53, 0.06);
+
+  --pink: #f472a4;
+  --pink-deep: #e85a8c;
+  --pink-soft: #fbcfe8;
+  --lavender: #e9d5ff;
+  --accent-strong: #c026d3;
+  --accent-soft: rgba(192, 38, 211, 0.1);
+
+  --predict-period: #f472a4;
+  --predict-ovulation: #7c3aed;
+
+  font-family:
+    'PingFang TC',
+    'Noto Sans TC',
+    'Microsoft JhengHei',
+    system-ui,
+    sans-serif;
+  line-height: 1.45;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #c4bccf;
+    --text-strong: #f5f1ff;
+    --muted: #9d94ad;
+    --bg: #141218;
+    --surface: #1e1b24;
+    --surface-2: #26222c;
+    --border: #332f3d;
+    --shadow-sm: 0 8px 28px rgba(0, 0, 0, 0.35);
+
+    --pink: #f472a4;
+    --pink-deep: #fb7185;
+    --pink-soft: rgba(244, 114, 164, 0.25);
+    --lavender: rgba(233, 213, 255, 0.12);
+    --accent-strong: #e879f9;
+    --accent-soft: rgba(232, 121, 249, 0.12);
+
+    --predict-period: #fb7185;
+    --predict-ovulation: #a78bfa;
+  }
+}
