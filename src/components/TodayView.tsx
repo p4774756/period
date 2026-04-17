@@ -3,7 +3,7 @@ import {
   riskNote,
   todayStatusChip,
 } from '../copy'
-import { diffDays, formatChineseDay, todayISO } from '../dates'
+import { addDays, diffDays, formatChineseDay, todayISO } from '../dates'
 import type { CyclePrediction } from '../cycleMath'
 import { inferBodyPhase, inferRiskLevel } from '../phase'
 import { useState } from 'react'
@@ -31,6 +31,9 @@ export function TodayView({
   const phase = inferBodyPhase(prediction)
   const risk = inferRiskLevel(prediction)
   const ov = formatCountdown(prediction.predictedOvulation)
+  const fertile = prediction.predictedOvulation
+    ? formatCountdown(addDays(prediction.predictedOvulation, -5))
+    : null
   const pd = formatCountdown(prediction.nextPeriodStart)
   const [showStyleModal, setShowStyleModal] = useState(false)
 
@@ -55,6 +58,12 @@ export function TodayView({
         <p className="status-chip">{todayStatusChip(goal, risk, phase)}</p>
 
         <div className="countdown-block">
+          <div className="countdown-row">
+            <span className="countdown-label">排卵期（推估）</span>
+            <span className="countdown-value">
+              {fertile ?? '—'}
+            </span>
+          </div>
           <div className="countdown-row">
             <span className="countdown-label">排卵（推估）</span>
             <span className="countdown-value">

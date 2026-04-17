@@ -10,8 +10,9 @@ import {
 } from '../dates'
 import {
   cycleDayNumberForDate,
-  fertileWindowIsoDates,
   periodRangesFromDays,
+  projectedFertileWindowDates,
+  projectedOvulationDates,
   projectedPeriodRanges,
   type CyclePrediction,
 } from '../cycleMath'
@@ -99,8 +100,12 @@ export function CalendarView({
     }
     return s
   }, [projectedRanges])
+  const projectedOvulationSet = useMemo(
+    () => new Set(projectedOvulationDates(prediction, 12)),
+    [prediction],
+  )
   const fertileSet = useMemo(
-    () => new Set(fertileWindowIsoDates(prediction)),
+    () => new Set(projectedFertileWindowDates(prediction, 12)),
     [prediction],
   )
 
@@ -266,12 +271,12 @@ export function CalendarView({
             settings.calendarShowCycleDay && cycleNum != null
           const showOvIc =
             settings.calendarShowOvulation &&
-            prediction.predictedOvulation === iso
+            projectedOvulationSet.has(iso)
           const showFertileIc =
             settings.calendarShowFertileWindow &&
             fertileSet.has(iso) &&
             !periodSet.has(iso) &&
-            prediction.predictedOvulation !== iso
+            !projectedOvulationSet.has(iso)
 
           return (
             <button

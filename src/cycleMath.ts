@@ -111,6 +111,29 @@ export function projectedPeriodRanges(
   return ranges
 }
 
+/** 往後推估多個排卵日（與 projectedPeriodRanges 對齊） */
+export function projectedOvulationDates(
+  prediction: CyclePrediction,
+  count = 12,
+): string[] {
+  const periods = projectedPeriodRanges(prediction, count)
+  return periods.map((p) => addDays(p.start, -14))
+}
+
+/** 往後推估多個排卵期（排卵前 5 天至排卵後 1 天） */
+export function projectedFertileWindowDates(
+  prediction: CyclePrediction,
+  count = 12,
+): string[] {
+  const ovs = projectedOvulationDates(prediction, count)
+  const out = new Set<string>()
+  for (const ov of ovs) {
+    const window = enumerateInclusive(addDays(ov, -5), addDays(ov, 1))
+    for (const d of window) out.add(d)
+  }
+  return [...out]
+}
+
 function roundAvg(nums: number[]): number {
   if (nums.length === 0) return 0
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length)
