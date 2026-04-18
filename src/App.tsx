@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, Flower2, Settings } from 'lucide-react'
 import { CalendarView } from './components/CalendarView'
 import { SettingsView } from './components/SettingsView'
@@ -23,6 +23,8 @@ export default function App() {
     iso: string
     blockLen: number
   } | null>(null)
+  /** 避免行動版瀏覽器：開啟對話框後同一串觸控產生的「幽靈點擊」立刻打中 backdrop 而關閉 */
+  const pendingSecondPeriodOpenedAtRef = useRef(0)
 
   useEffect(() => {
     saveState(state)
@@ -87,6 +89,7 @@ export default function App() {
         blockLen,
       )
     ) {
+      pendingSecondPeriodOpenedAtRef.current = Date.now()
       setPendingSecondPeriod({ iso, blockLen })
       return
     }
@@ -192,9 +195,14 @@ export default function App() {
 
       {pendingSecondPeriod && (
         <div
-          className="cal-sheet-backdrop"
+          className="cal-sheet-backdrop app-second-period-confirm"
           role="presentation"
-          onClick={() => setPendingSecondPeriod(null)}
+          onClick={() => {
+            if (Date.now() - pendingSecondPeriodOpenedAtRef.current < 450) {
+              return
+            }
+            setPendingSecondPeriod(null)
+          }}
         >
           <div
             className="cal-sheet"

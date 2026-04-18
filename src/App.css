@@ -398,6 +398,9 @@ button.wide {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .cal-cell.empty {
@@ -695,6 +698,10 @@ button.wide {
 .cal-inline-ic {
   vertical-align: middle;
   display: inline-block;
+}
+
+.cal-sheet-backdrop.app-second-period-confirm {
+  z-index: 300;
 }
 
 .cal-sheet-backdrop {

@@ -77,6 +77,10 @@ export function CalendarView({
 
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activePressIsoRef = useRef<string | null>(null)
+  /** 讓觸控軌跡留在同一格子上，避免小格子上擡手前 pointerleave 吃掉短按 */
+  const pointerCaptureRef = useRef<{ pointerId: number; node: HTMLElement } | null>(
+    null,
+  )
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
@@ -124,6 +128,15 @@ export function CalendarView({
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current)
       }
+      const c = pointerCaptureRef.current
+      if (c) {
+        try {
+          c.node.releasePointerCapture(c.pointerId)
+        } catch {
+          /* noop */
+        }
+        pointerCaptureRef.current = null
+      }
     }
   }, [])
 
@@ -134,6 +147,19 @@ export function CalendarView({
     }
   }
 
+  function releaseDayPointerCapture() {
+    const c = pointerCaptureRef.current
+    if (!c) return
+    try {
+      if (c.node.releasePointerCapture) {
+        c.node.releasePointerCapture(c.pointerId)
+      }
+    } catch {
+      /* 某些環境在 pointerup 後再釋放會拋錯，忽略即可 */
+    }
+    pointerCaptureRef.current = null
+  }
+
   function handleDayPointerDown(
     iso: string,
     e: React.PointerEvent<HTMLButtonElement>,
@@ -141,9 +167,16 @@ export function CalendarView({
     if (e.pointerType === 'mouse' && e.button !== 0) return
     activePressIsoRef.current = iso
     clearLongPressTimer()
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      pointerCaptureRef.current = { pointerId: e.pointerId, node: e.currentTarget }
+    } catch {
+      pointerCaptureRef.current = null
+    }
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null
       activePressIsoRef.current = null
+      releaseDayPointerCapture()
       setMenuDate(iso)
     }, LONG_PRESS_MS)
   }
@@ -154,11 +187,13 @@ export function CalendarView({
       clearLongPressTimer()
       onDayActivate(iso)
     }
+    releaseDayPointerCapture()
     activePressIsoRef.current = null
   }
 
   function handleDayPointerCancel() {
     clearLongPressTimer()
+    releaseDayPointerCapture()
     activePressIsoRef.current = null
   }
 
