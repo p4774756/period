@@ -1,5 +1,14 @@
 export type UserGoal = 'contraception' | 'trying' | 'tracking'
 export type MascotAnimal = 'rabbit' | 'cat' | 'bear' | 'dog' | 'panda' | 'fox'
+
+export const MASCOT_LABEL: Record<MascotAnimal, string> = {
+  rabbit: '兔子',
+  cat: '貓咪',
+  bear: '熊熊',
+  dog: '狗狗',
+  panda: '貓熊',
+  fox: '狐狸',
+}
 export type ThemeName = 'sakura' | 'mint' | 'sunset' | 'night'
 
 /** 日曆每週起始列 */

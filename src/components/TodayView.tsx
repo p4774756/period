@@ -7,7 +7,13 @@ import { addDays, diffDays, formatChineseDay, todayISO } from '../dates'
 import type { CyclePrediction } from '../cycleMath'
 import { inferBodyPhase, inferRiskLevel } from '../phase'
 import { useState } from 'react'
-import type { AppSettings, AppState, MascotAnimal, ThemeName } from '../types'
+import {
+  MASCOT_LABEL,
+  type AppSettings,
+  type AppState,
+  type MascotAnimal,
+  type ThemeName,
+} from '../types'
 import { MascotIcon } from './MascotIcon'
 
 function formatCountdown(target: string | null): string | null {
@@ -53,7 +59,11 @@ export function TodayView({
           aria-label="切換可愛動物與主題"
           title="切換可愛動物與主題"
         >
-          <MascotIcon animal={state.settings.mascotAnimal} className="mascot-svg mascot-svg-fab" />
+          <MascotIcon
+            animal={state.settings.mascotAnimal}
+            className="mascot-img mascot-img-fab"
+            priority
+          />
         </button>
         <p className="status-chip">{todayStatusChip(goal, risk, phase)}</p>
 
@@ -131,9 +141,10 @@ export function TodayView({
                       ? 'style-chip active'
                       : 'style-chip'
                   }
+                  aria-label={`切換吉祥物：${MASCOT_LABEL[animal]}`}
                   onClick={() => onPatchStyle({ mascotAnimal: animal })}
                 >
-                  <MascotIcon animal={animal} className="mascot-svg mascot-svg-chip" />
+                  <MascotIcon animal={animal} className="mascot-img mascot-img-chip" />
                 </button>
               ))}
             </div>
