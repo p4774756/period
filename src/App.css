@@ -95,7 +95,8 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  padding: 0.15rem;
+  padding: 0;
+  overflow: hidden; /* 裁掉 PNG 方圖四角的淺色底，避免跟圓鈕「雙層圓＋方角」 */
 }
 
 .status-chip {
@@ -218,19 +219,35 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
-.mascot-img-fab {
-  width: 2.6rem;
-  height: 2.6rem;
+.mascot-fab .mascot-img {
+  /* 圓形內用 cover，裁掉圖外圈底色，讓臉佔滿鈕面（與 contain 的「整張方圖＋小臉」不同） */
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
-.mascot-img-chip {
+.style-chip.mascot-style-chip {
+  min-height: 2.6rem;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mascot-style-chip .mascot-img {
+  object-fit: cover;
+  border-radius: 0.55rem;
   width: 2rem;
   height: 2rem;
+  flex-shrink: 0;
 }
 
 .theme-grid {

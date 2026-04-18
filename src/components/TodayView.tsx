@@ -61,7 +61,7 @@ export function TodayView({
         >
           <MascotIcon
             animal={state.settings.mascotAnimal}
-            className="mascot-img mascot-img-fab"
+            className="mascot-img"
             priority
           />
         </button>
@@ -136,15 +136,13 @@ export function TodayView({
                 <button
                   key={animal}
                   type="button"
-                  className={
-                    state.settings.mascotAnimal === animal
-                      ? 'style-chip active'
-                      : 'style-chip'
-                  }
+                  className={`style-chip mascot-style-chip${
+                    state.settings.mascotAnimal === animal ? ' active' : ''
+                  }`}
                   aria-label={`切換吉祥物：${MASCOT_LABEL[animal]}`}
                   onClick={() => onPatchStyle({ mascotAnimal: animal })}
                 >
-                  <MascotIcon animal={animal} className="mascot-img mascot-img-chip" />
+                  <MascotIcon animal={animal} className="mascot-img" />
                 </button>
               ))}
             </div>
