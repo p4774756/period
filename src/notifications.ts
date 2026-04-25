@@ -34,6 +34,16 @@ export interface NotificationCheckResult {
   notificationSent: AppState['notificationSent']
 }
 
+function safeCreateNotification(title: string, options: NotificationOptions): boolean {
+  try {
+    new Notification(title, options)
+    return true
+  } catch {
+    // 某些行動瀏覽器即使存在 Notification 物件，仍不允許直接建構通知。
+    return false
+  }
+}
+
 /** 在頁面開啟時檢查是否應顯示經期／排卵提醒（純前端最佳努力） */
 export function checkAndNotify(
   state: AppState,
@@ -70,11 +80,11 @@ export function checkAndNotify(
   ) {
     const key = `period:${prediction.nextPeriodStart}`
     if (!next[key]) {
-      new Notification('經期提醒', {
+      const created = safeCreateNotification('經期提醒', {
         body: `預估下次經期開始：${prediction.nextPeriodStart}。此為推估，實際狀況可能不同。`,
         lang: 'zh-Hant',
       })
-      touch(key)
+      if (created) touch(key)
     }
   }
 
@@ -91,11 +101,11 @@ export function checkAndNotify(
   ) {
     const key = `ovulation:${prediction.predictedOvulation}`
     if (!next[key]) {
-      new Notification('排卵日提醒', {
+      const created = safeCreateNotification('排卵日提醒', {
         body: `預估排卵日：${prediction.predictedOvulation}。此為推估，非醫療診斷。`,
         lang: 'zh-Hant',
       })
-      touch(key)
+      if (created) touch(key)
     }
   }
 
