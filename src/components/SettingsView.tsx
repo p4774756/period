@@ -243,7 +243,7 @@ export function SettingsView({
           雲端推播（鎖屏／關分頁也能收到）
         </label>
         <p className="muted small">
-          僅上傳「下次經期／排卵的觸發時間」與裝置推播金鑰到 Firebase；不上傳歷史紀錄。Android Chrome／桌面瀏覽器皆可；iOS Safari 需先把網頁「加到主畫面」並從圖示開啟。實際提醒可能比指定時間晚約一小時（伺服器排程粒度）。
+          僅上傳「下次經期／排卵的觸發時間」與裝置推播金鑰到 Firebase；不上傳歷史紀錄。Android Chrome／桌面瀏覽器皆可；iOS Safari 需先把網頁「加到主畫面」並從圖示開啟。伺服器每天台北時間早上 8 點批次檢查並推送，因此設定的「提醒時間」只決定哪一天會收到，實際送達固定落在早上 8 點前後。
         </p>
         <button
           type="button"
