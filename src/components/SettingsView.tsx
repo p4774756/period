@@ -3,10 +3,13 @@ import { disclaimerParagraphs, goalLabel } from '../copy'
 import { exportStateJson, importStateJson } from '../storage'
 import { defaultSettings, type AppState } from '../types'
 import {
+  disableCloudPush,
+  enableCloudPush,
   notificationSupported,
   requestNotificationPermission,
   sendTestNotification,
 } from '../notifications'
+import { computePrediction } from '../cycleMath'
 
 export function SettingsView({
   state,
@@ -20,6 +23,7 @@ export function SettingsView({
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
   const [notifyMsg, setNotifyMsg] = useState<string | null>(null)
+  const [cloudBusy, setCloudBusy] = useState(false)
   const appVersion = __APP_VERSION__
 
   const s = state.settings
@@ -39,6 +43,47 @@ export function SettingsView({
     }
     patchSettings({ notifyPeriod: true, notifyOvulation: true })
     setNotifyMsg('已允許通知，並已開啟經期與排卵提醒開關（可自行再調整）。')
+  }
+
+  async function onToggleCloudPush(checked: boolean) {
+    if (cloudBusy) return
+    setCloudBusy(true)
+    setNotifyMsg(null)
+    try {
+      if (checked) {
+        const prediction = computePrediction({
+          periodDays: state.periodDays,
+          settings: state.settings,
+        })
+        const r = await enableCloudPush(state, prediction)
+        if (r === 'enabled') {
+          patchSettings({ cloudPushEnabled: true })
+          setNotifyMsg(
+            '已啟用雲端推播。即使分頁關閉、手機鎖屏，到時間都能收到提醒（iOS 需先「加到主畫面」）。',
+          )
+        } else if (r === 'unsupported') {
+          setNotifyMsg(
+            '此瀏覽器不支援 Web Push（FCM）。建議使用桌機 Chrome／Edge 或 Android Chrome。',
+          )
+        } else if (r === 'denied') {
+          setNotifyMsg('通知權限已被拒絕：請在瀏覽器網址列旁的權限設定中改為允許。')
+        } else if (r === 'dismissed') {
+          setNotifyMsg('尚未取得通知權限：請允許通知後再啟用。')
+        } else if (r === 'no-token') {
+          setNotifyMsg(
+            '無法取得推播金鑰：可能是 Service Worker 註冊失敗，或瀏覽器封鎖了 FCM。請重新整理頁面再試。',
+          )
+        } else {
+          setNotifyMsg('啟用失敗，請稍後再試（請確認網路連線正常）。')
+        }
+      } else {
+        await disableCloudPush()
+        patchSettings({ cloudPushEnabled: false })
+        setNotifyMsg('已關閉雲端推播，並已從伺服器移除此裝置紀錄。')
+      }
+    } finally {
+      setCloudBusy(false)
+    }
   }
 
   async function onTestNotification() {
@@ -131,9 +176,9 @@ export function SettingsView({
       </section>
 
       <section className="card">
-        <h2>通知（純前端最佳努力）</h2>
+        <h2>通知</h2>
         <p className="muted small">
-          僅提醒「經期」與「排卵日」，不含易孕窗。需開啟分頁或定期開啟網頁，推播才可能觸發。
+          僅提醒「經期」與「排卵日」，不含易孕窗。本機提醒只在分頁開啟時觸發；若想在鎖屏／關分頁時也收到，請啟用下方「雲端推播」。
         </p>
         {!notificationSupported() && (
           <p className="warn">此瀏覽器不支援網頁通知。</p>
@@ -154,6 +199,19 @@ export function SettingsView({
         >
           測試通知（立即送出一則）
         </button>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={s.cloudPushEnabled}
+            disabled={cloudBusy || !notificationSupported()}
+            onChange={(e) => onToggleCloudPush(e.target.checked)}
+          />
+          雲端推播（鎖屏／關分頁也能收到）
+        </label>
+        <p className="muted small">
+          僅上傳「下次經期／排卵的觸發時間」與裝置推播金鑰到 Firebase；不上傳歷史紀錄。Android Chrome／桌面瀏覽器皆可；iOS Safari 需先把網頁「加到主畫面」並從圖示開啟。
+        </p>
         {notifyMsg && <p className="muted small">{notifyMsg}</p>}
 
         <label className="check">

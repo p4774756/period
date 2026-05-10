@@ -33,6 +33,12 @@ export interface AppSettings {
   calendarShowPredictPeriodStart: boolean
   mascotAnimal: MascotAnimal
   themeName: ThemeName
+  /**
+   * 是否啟用「雲端推播（鎖屏／關分頁也能收到）」。
+   * 啟用後會在 Firestore 寫入「下次經期/排卵的觸發時間」與 FCM token，
+   * 由 Cloud Functions 排程到時間時推送 FCM。預設關閉以保留純本機體驗。
+   */
+  cloudPushEnabled: boolean
 }
 
 export interface AppState {
@@ -63,6 +69,7 @@ export const defaultSettings: AppSettings = {
   calendarShowPredictPeriodStart: true,
   mascotAnimal: 'rabbit',
   themeName: 'sakura',
+  cloudPushEnabled: false,
 }
 
 export function createInitialState(): AppState {

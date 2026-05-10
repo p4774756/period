@@ -1,10 +1,25 @@
 import {
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+} from 'firebase/firestore'
+import { deleteToken, getToken } from 'firebase/messaging'
+import {
   isAtOrPastReminderTime,
   isBeforeEventEnd,
   reminderFireDate,
   type CyclePrediction,
 } from './cycleMath'
-import type { AppState } from './types'
+import { addDays, parseISOToLocal } from './dates'
+import {
+  ensureAnonymousUser,
+  FCM_VAPID_KEY,
+  getFirebaseFirestore,
+  getFirebaseMessaging,
+} from './firebase'
+import type { AppSettings, AppState } from './types'
 
 function shouldNotifyWindow(
   now: Date,
@@ -141,4 +156,218 @@ export function checkAndNotify(
   }
 
   return { notificationSent: changed ? next : state.notificationSent }
+}
+
+// ---------------------------------------------------------------------------
+// 雲端推播（FCM Web Push + Cloud Functions 排程）
+//
+// 設計重點：
+// - App 在本機完成所有預測；只把「下一次觸發時間」與 FCM token 上傳。
+// - 不上傳任何歷史經期紀錄，亦不上傳設定細節。
+// - Cloud Function 排程到時直接以 FCM 推送，前端 Service Worker 顯示通知，
+//   因此使用者鎖屏／關分頁也能收到。
+// - 使用者關閉開關時會刪除 FCM token 與 Firestore 文件，徹底結束雲端足跡。
+// ---------------------------------------------------------------------------
+
+export type CloudPushEnableResult =
+  | 'enabled'
+  | 'unsupported'
+  | 'denied'
+  | 'dismissed'
+  | 'no-token'
+  | 'failed'
+
+interface ReminderDocPayload {
+  fcmToken: string
+  tz: string
+  periodFireAt: Timestamp | null
+  ovulationFireAt: Timestamp | null
+  periodTargetDate: string
+  ovulationTargetDate: string
+  updatedAt: ReturnType<typeof serverTimestamp>
+}
+
+function localTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei'
+  } catch {
+    return 'Asia/Taipei'
+  }
+}
+
+/** 算出「事件日提前 advanceDays 天、在使用者本機 hour:minute」對應的 Date。 */
+function computeFireDate(
+  eventISO: string | null,
+  advanceDays: number,
+  hour: number,
+  minute: number,
+): Date | null {
+  if (!eventISO) return null
+  const reminderDay = addDays(eventISO, -advanceDays)
+  const d = parseISOToLocal(reminderDay)
+  d.setHours(hour, minute, 0, 0)
+  return d
+}
+
+function buildReminderPayload(
+  fcmToken: string,
+  settings: AppSettings,
+  prediction: CyclePrediction,
+  now: Date = new Date(),
+): ReminderDocPayload {
+  const periodFire = settings.notifyPeriod
+    ? computeFireDate(
+        prediction.nextPeriodStart,
+        settings.periodAdvanceDays,
+        settings.reminderHour,
+        settings.reminderMinute,
+      )
+    : null
+  const ovuFire = settings.notifyOvulation
+    ? computeFireDate(
+        prediction.predictedOvulation,
+        settings.ovulationAdvanceDays,
+        settings.reminderHour,
+        settings.reminderMinute,
+      )
+    : null
+
+  // 已過時間就不再上傳，避免 Cloud Function 立刻又推一次過期通知。
+  const periodFireAt = periodFire && periodFire.getTime() > now.getTime()
+    ? Timestamp.fromDate(periodFire)
+    : null
+  const ovulationFireAt = ovuFire && ovuFire.getTime() > now.getTime()
+    ? Timestamp.fromDate(ovuFire)
+    : null
+
+  return {
+    fcmToken,
+    tz: localTimeZone(),
+    periodFireAt,
+    ovulationFireAt,
+    periodTargetDate: prediction.nextPeriodStart ?? '',
+    ovulationTargetDate: prediction.predictedOvulation ?? '',
+    updatedAt: serverTimestamp(),
+  }
+}
+
+async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return null
+  }
+  try {
+    return await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+  } catch {
+    return null
+  }
+}
+
+async function obtainFcmToken(): Promise<string | null> {
+  const messaging = await getFirebaseMessaging()
+  if (!messaging) return null
+  const reg = await getServiceWorkerRegistration()
+  if (!reg) return null
+  try {
+    const token = await getToken(messaging, {
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: reg,
+    })
+    return token || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 啟用雲端推播：請求權限 → 取得 FCM token → 匿名登入 → 寫入 reminders/{uid}。
+ * 全程任一步失敗會回傳對應狀態，由 UI 顯示提示。
+ */
+export async function enableCloudPush(
+  state: AppState,
+  prediction: CyclePrediction,
+): Promise<CloudPushEnableResult> {
+  if (!notificationSupported()) return 'unsupported'
+
+  let permission = Notification.permission
+  if (permission === 'default') {
+    try {
+      permission = await Notification.requestPermission()
+    } catch {
+      return 'failed'
+    }
+  }
+  if (permission !== 'granted') {
+    return permission === 'denied' ? 'denied' : 'dismissed'
+  }
+
+  let user
+  try {
+    user = await ensureAnonymousUser()
+  } catch {
+    return 'failed'
+  }
+
+  const token = await obtainFcmToken()
+  if (!token) return 'no-token'
+
+  const payload = buildReminderPayload(token, state.settings, prediction)
+  try {
+    await setDoc(
+      doc(getFirebaseFirestore(), 'reminders', user.uid),
+      payload,
+      { merge: false },
+    )
+  } catch {
+    return 'failed'
+  }
+  return 'enabled'
+}
+
+/** 關閉雲端推播：刪除 Firestore 文件與 FCM token。 */
+export async function disableCloudPush(): Promise<void> {
+  try {
+    const user = await ensureAnonymousUser()
+    await deleteDoc(doc(getFirebaseFirestore(), 'reminders', user.uid)).catch(() => {})
+  } catch {
+    /* 忽略：已沒有有效身分 */
+  }
+  try {
+    const messaging = await getFirebaseMessaging()
+    if (messaging) await deleteToken(messaging).catch(() => {})
+  } catch {
+    /* 忽略 */
+  }
+}
+
+/**
+ * 預測或設定變動時呼叫。已啟用雲端推播時，重新計算下一次觸發時間並覆寫 Firestore。
+ * 若 token 失效或權限取消，會靜默結束（不要影響 App 主流程）。
+ */
+export async function syncReminderToCloud(
+  state: AppState,
+  prediction: CyclePrediction,
+): Promise<void> {
+  if (!state.settings.cloudPushEnabled) return
+  if (!notificationSupported()) return
+  if (Notification.permission !== 'granted') return
+
+  let user
+  try {
+    user = await ensureAnonymousUser()
+  } catch {
+    return
+  }
+  const token = await obtainFcmToken()
+  if (!token) return
+
+  const payload = buildReminderPayload(token, state.settings, prediction)
+  try {
+    await setDoc(
+      doc(getFirebaseFirestore(), 'reminders', user.uid),
+      payload,
+      { merge: false },
+    )
+  } catch {
+    /* 靜默忽略 */
+  }
 }

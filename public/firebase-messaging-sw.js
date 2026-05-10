@@ -1,0 +1,52 @@
+// 使用 compat SDK：Service Worker 環境用 importScripts() 是最穩的方式，
+// 不需要設定 type:module 或處理 ESM bundling。版本與 src/firebase.ts 對齊到主版本。
+importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js')
+importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js')
+
+// 與 src/firebase.ts 中的 firebaseConfig 完全一致；屬於公開識別碼。
+firebase.initializeApp({
+  apiKey: 'AIzaSyDo_mD1imVLNFIefFWoG-kvPx4gts2aupo',
+  authDomain: 'period-tracker-tina.firebaseapp.com',
+  projectId: 'period-tracker-tina',
+  storageBucket: 'period-tracker-tina.firebasestorage.app',
+  messagingSenderId: '215591709546',
+  appId: '1:215591709546:web:fffd1285719533f204d313',
+})
+
+const messaging = firebase.messaging()
+
+// 背景訊息：分頁未開或不在前景時觸發。Cloud Function 會送 data-only 訊息，
+// 由這裡決定通知標題、內文與點擊行為。
+messaging.onBackgroundMessage((payload) => {
+  const data = payload.data || {}
+  const title = data.title || '提醒'
+  const body = data.body || ''
+  self.registration.showNotification(title, {
+    body,
+    lang: 'zh-Hant',
+    tag: data.tag || 'period-tracker',
+    renotify: true,
+    data: { url: data.url || '/' },
+  })
+})
+
+// 點擊通知：嘗試聚焦既有分頁，否則開新分頁。
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+      for (const client of allClients) {
+        if ('focus' in client) {
+          await client.focus()
+          return
+        }
+      }
+      if (self.clients.openWindow) await self.clients.openWindow(target)
+    })(),
+  )
+})
