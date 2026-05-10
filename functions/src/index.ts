@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
+import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions/v2'
 
 initializeApp()
@@ -147,5 +148,67 @@ export const scheduledSendReminders = onSchedule(
     logger.info(
       `處理完成：嘗試 ${pending.length} 則、成功 ${success} 則、清理失效 token ${tokensToCleanup.size} 份。`,
     )
+  },
+)
+
+/**
+ * 立即送出一則「測試雲端推播」通知到呼叫者目前的 FCM token。
+ * 用來驗證整條鏈路（前端授權 → SW 註冊 → token 寫入 Firestore →
+ * Cloud Function 取得 token → FCM 推送 → SW onBackgroundMessage 顯示通知）
+ * 都正確運作，不必等到一小時排程。
+ */
+export const sendTestCloudPush = onCall(
+  { region: 'asia-east1', memory: '256MiB' },
+  async (request) => {
+    const uid = request.auth?.uid
+    if (!uid) {
+      throw new HttpsError('unauthenticated', '需要先登入（匿名身分）才能測試。')
+    }
+
+    const db = getFirestore()
+    const docRef = db.collection('reminders').doc(uid)
+    const snap = await docRef.get()
+    if (!snap.exists) {
+      throw new HttpsError(
+        'failed-precondition',
+        '尚未啟用雲端推播：請先在設定裡勾選「雲端推播」。',
+      )
+    }
+    const data = snap.data() as ReminderDoc
+    const token = data.fcmToken
+    if (!token) {
+      throw new HttpsError(
+        'failed-precondition',
+        '找不到此裝置的推播金鑰，請關閉再重新啟用「雲端推播」。',
+      )
+    }
+
+    try {
+      await getMessaging().send({
+        token,
+        data: {
+          title: '雲端推播測試',
+          body: '若你看到這則通知，表示 Firebase 雲端推播鏈路完全正常 🎉',
+          tag: 'test',
+        },
+      })
+      return { ok: true }
+    } catch (err) {
+      const e = err as { code?: string; message?: string }
+      logger.warn(
+        `測試推播失敗 uid=${uid} code=${e?.code} msg=${e?.message}`,
+      )
+      if (
+        e?.code === 'messaging/registration-token-not-registered' ||
+        e?.code === 'messaging/invalid-registration-token'
+      ) {
+        await docRef.delete().catch(() => {})
+        throw new HttpsError(
+          'failed-precondition',
+          '推播金鑰已失效（瀏覽器可能清過資料）。請關閉再重新啟用「雲端推播」。',
+        )
+      }
+      throw new HttpsError('internal', `FCM 發送失敗：${e?.message ?? '未知錯誤'}`)
+    }
   },
 )

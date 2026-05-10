@@ -5,6 +5,7 @@ import {
   setDoc,
   Timestamp,
 } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import { deleteToken, getToken } from 'firebase/messaging'
 import {
   isAtOrPastReminderTime,
@@ -17,6 +18,7 @@ import {
   ensureAnonymousUser,
   FCM_VAPID_KEY,
   getFirebaseFirestore,
+  getFirebaseFunctions,
   getFirebaseMessaging,
 } from './firebase'
 import type { AppSettings, AppState } from './types'
@@ -373,5 +375,48 @@ export async function syncReminderToCloud(
     )
   } catch {
     /* 靜默忽略 */
+  }
+}
+
+export type CloudTestResult =
+  | 'sent'
+  | 'not-enabled'
+  | 'unauthenticated'
+  | 'no-token'
+  | 'failed'
+
+/**
+ * 呼叫 Cloud Function 立即送一則測試推播到目前裝置的 FCM token，
+ * 用來驗證雲端推播鏈路（不必等到一小時排程）。
+ */
+export async function sendCloudTestNotification(): Promise<{
+  result: CloudTestResult
+  message?: string
+}> {
+  try {
+    await ensureAnonymousUser()
+  } catch {
+    return { result: 'unauthenticated' }
+  }
+  try {
+    const callable = httpsCallable<unknown, { ok: boolean }>(
+      getFirebaseFunctions(),
+      'sendTestCloudPush',
+    )
+    await callable()
+    return { result: 'sent' }
+  } catch (err) {
+    const e = err as { code?: string; message?: string }
+    const code = e?.code || ''
+    if (code === 'functions/failed-precondition') {
+      // 後端訊息已具體說明（未啟用 / token 失效）
+      const msg = e?.message || ''
+      if (msg.includes('金鑰')) return { result: 'no-token', message: msg }
+      return { result: 'not-enabled', message: msg }
+    }
+    if (code === 'functions/unauthenticated') {
+      return { result: 'unauthenticated' }
+    }
+    return { result: 'failed', message: e?.message }
   }
 }

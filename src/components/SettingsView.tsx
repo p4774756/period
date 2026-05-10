@@ -7,6 +7,7 @@ import {
   enableCloudPush,
   notificationSupported,
   requestNotificationPermission,
+  sendCloudTestNotification,
   sendTestNotification,
 } from '../notifications'
 import { computePrediction } from '../cycleMath'
@@ -80,6 +81,38 @@ export function SettingsView({
         await disableCloudPush()
         patchSettings({ cloudPushEnabled: false })
         setNotifyMsg('已關閉雲端推播，並已從伺服器移除此裝置紀錄。')
+      }
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  async function onTestCloudPush() {
+    if (cloudBusy) return
+    setCloudBusy(true)
+    setNotifyMsg('正在透過 Firebase 發送測試推播…')
+    try {
+      const r = await sendCloudTestNotification()
+      switch (r.result) {
+        case 'sent':
+          setNotifyMsg(
+            '已從伺服器送出測試推播，幾秒內應跳出通知；可關閉此分頁／鎖屏觀察。若沒看到請檢查系統勿擾與瀏覽器網站通知設定。',
+          )
+          break
+        case 'not-enabled':
+          setNotifyMsg(r.message || '尚未啟用雲端推播：請先勾選「雲端推播」。')
+          break
+        case 'no-token':
+          setNotifyMsg(
+            r.message || '推播金鑰失效：請關閉再重新啟用「雲端推播」。',
+          )
+          break
+        case 'unauthenticated':
+          setNotifyMsg('身分驗證失敗，請重新整理頁面後再試。')
+          break
+        case 'failed':
+          setNotifyMsg(`測試推播失敗：${r.message ?? '請稍後再試'}`)
+          break
       }
     } finally {
       setCloudBusy(false)
@@ -210,8 +243,16 @@ export function SettingsView({
           雲端推播（鎖屏／關分頁也能收到）
         </label>
         <p className="muted small">
-          僅上傳「下次經期／排卵的觸發時間」與裝置推播金鑰到 Firebase；不上傳歷史紀錄。Android Chrome／桌面瀏覽器皆可；iOS Safari 需先把網頁「加到主畫面」並從圖示開啟。
+          僅上傳「下次經期／排卵的觸發時間」與裝置推播金鑰到 Firebase；不上傳歷史紀錄。Android Chrome／桌面瀏覽器皆可；iOS Safari 需先把網頁「加到主畫面」並從圖示開啟。實際提醒可能比指定時間晚約一小時（伺服器排程粒度）。
         </p>
+        <button
+          type="button"
+          className="secondary wide"
+          onClick={onTestCloudPush}
+          disabled={!s.cloudPushEnabled || cloudBusy}
+        >
+          測試雲端推播（立即從伺服器發送）
+        </button>
         {notifyMsg && <p className="muted small">{notifyMsg}</p>}
 
         <label className="check">

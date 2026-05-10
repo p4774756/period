@@ -7,6 +7,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
+import { getFunctions, type Functions } from 'firebase/functions'
 import {
   getMessaging,
   isSupported as isMessagingSupported,
@@ -33,7 +34,11 @@ export const FCM_VAPID_KEY =
 let appSingleton: FirebaseApp | null = null
 let authSingleton: Auth | null = null
 let firestoreSingleton: Firestore | null = null
+let functionsSingleton: Functions | null = null
 let messagingPromise: Promise<Messaging | null> | null = null
+
+/** Cloud Functions 部署的區域，需與 functions/src/index.ts 的 region 一致。 */
+export const FUNCTIONS_REGION = 'asia-east1'
 
 export function getFirebaseApp(): FirebaseApp {
   if (!appSingleton) appSingleton = initializeApp(firebaseConfig)
@@ -48,6 +53,13 @@ export function getFirebaseAuth(): Auth {
 export function getFirebaseFirestore(): Firestore {
   if (!firestoreSingleton) firestoreSingleton = getFirestore(getFirebaseApp())
   return firestoreSingleton
+}
+
+export function getFirebaseFunctions(): Functions {
+  if (!functionsSingleton) {
+    functionsSingleton = getFunctions(getFirebaseApp(), FUNCTIONS_REGION)
+  }
+  return functionsSingleton
 }
 
 /**
