@@ -30,6 +30,37 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   return Notification.requestPermission()
 }
 
+export type TestNotificationResult =
+  | 'sent'
+  | 'unsupported'
+  | 'denied'
+  | 'dismissed'
+  | 'failed'
+
+/**
+ * 立即送出一則測試通知；若尚未授權，先嘗試詢問權限。
+ * 用來驗證瀏覽器確實能彈出通知（部分行動瀏覽器即使授權仍不允許）。
+ */
+export async function sendTestNotification(): Promise<TestNotificationResult> {
+  if (!notificationSupported()) return 'unsupported'
+  let permission = Notification.permission
+  if (permission === 'default') {
+    try {
+      permission = await Notification.requestPermission()
+    } catch {
+      return 'failed'
+    }
+  }
+  if (permission !== 'granted') {
+    return permission === 'denied' ? 'denied' : 'dismissed'
+  }
+  const ok = safeCreateNotification('測試通知', {
+    body: '若你看到這則通知，表示瀏覽器可正常推播提醒。',
+    lang: 'zh-Hant',
+  })
+  return ok ? 'sent' : 'failed'
+}
+
 export interface NotificationCheckResult {
   notificationSent: AppState['notificationSent']
 }

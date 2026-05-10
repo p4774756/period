@@ -2,7 +2,11 @@ import { useRef, useState } from 'react'
 import { disclaimerParagraphs, goalLabel } from '../copy'
 import { exportStateJson, importStateJson } from '../storage'
 import { defaultSettings, type AppState } from '../types'
-import { notificationSupported, requestNotificationPermission } from '../notifications'
+import {
+  notificationSupported,
+  requestNotificationPermission,
+  sendTestNotification,
+} from '../notifications'
 
 export function SettingsView({
   state,
@@ -15,6 +19,7 @@ export function SettingsView({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [notifyMsg, setNotifyMsg] = useState<string | null>(null)
   const appVersion = __APP_VERSION__
 
   const s = state.settings
@@ -29,11 +34,36 @@ export function SettingsView({
   async function onEnableNotifications() {
     const p = await requestNotificationPermission()
     if (p !== 'granted') {
-      setImportMsg('通知權限未開啟：請在瀏覽器設定中允許此網站通知。')
+      setNotifyMsg('通知權限未開啟：請在瀏覽器設定中允許此網站通知。')
       return
     }
     patchSettings({ notifyPeriod: true, notifyOvulation: true })
-    setImportMsg('已允許通知，並已開啟經期與排卵提醒開關（可自行再調整）。')
+    setNotifyMsg('已允許通知，並已開啟經期與排卵提醒開關（可自行再調整）。')
+  }
+
+  async function onTestNotification() {
+    const r = await sendTestNotification()
+    switch (r) {
+      case 'sent':
+        setNotifyMsg(
+          '已送出測試通知。若沒看到：請檢查系統「勿擾／專注模式」、瀏覽器網站通知設定，行動裝置請確認此分頁仍開啟。',
+        )
+        break
+      case 'unsupported':
+        setNotifyMsg('此瀏覽器不支援網頁通知。')
+        break
+      case 'denied':
+        setNotifyMsg('通知權限已被拒絕：請在瀏覽器網址列旁的權限設定中改為允許。')
+        break
+      case 'dismissed':
+        setNotifyMsg('尚未取得通知權限：請先按上方「請求通知權限並開啟提醒」。')
+        break
+      case 'failed':
+        setNotifyMsg(
+          '此瀏覽器不允許直接彈出通知（常見於部分行動瀏覽器）。請改用桌機 Chrome／Firefox／Edge，或加到主畫面後再試。',
+        )
+        break
+    }
   }
 
   return (
@@ -116,6 +146,15 @@ export function SettingsView({
         >
           請求通知權限並開啟提醒
         </button>
+        <button
+          type="button"
+          className="secondary wide"
+          onClick={onTestNotification}
+          disabled={!notificationSupported()}
+        >
+          測試通知（立即送出一則）
+        </button>
+        {notifyMsg && <p className="muted small">{notifyMsg}</p>}
 
         <label className="check">
           <input
