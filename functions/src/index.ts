@@ -99,19 +99,22 @@ export const scheduledSendReminders = onSchedule(
       return
     }
 
-    // 用 data-only 訊息：交由 Service Worker 的 onBackgroundMessage 自行決定外觀，
-    // 才能依 kind 顯示不同 tag、避免被瀏覽器替換成預設標題。
+    // 採用 notification + webpush 的標準 payload：
+    // - 背景：FCM SDK 在瀏覽器端會自動以 SW.showNotification 顯示，無需自寫
+    //   callback，行動裝置（Android Chrome/Edge）成功率最高。
+    // - 前景：仍會觸發前端的 onMessage（由前端透過 SW.showNotification 顯示）。
     const messaging = getMessaging()
     const sendResults = await Promise.allSettled(
       pending.map((p) =>
         messaging.send({
           token: p.token,
-          // 不送 url；SW 會以 self.registration.scope 為預設目標，
-          // 避免在子路徑部署（例如 GitHub Pages /period/）時打開錯誤位置。
-          data: {
-            title: p.title,
-            body: p.body,
-            tag: p.kind,
+          notification: { title: p.title, body: p.body },
+          webpush: {
+            notification: {
+              tag: p.kind,
+              lang: 'zh-Hant',
+              requireInteraction: false,
+            },
           },
         }),
       ),
@@ -184,10 +187,16 @@ export const sendTestCloudPush = onCall(
     try {
       await getMessaging().send({
         token,
-        data: {
+        notification: {
           title: '雲端推播測試',
-          body: '若你看到這則通知，表示 Firebase 雲端推播鏈路完全正常 🎉',
-          tag: 'test',
+          body: '若你看到這則通知，表示 Firebase 雲端推播鏈路完全正常',
+        },
+        webpush: {
+          notification: {
+            tag: 'test',
+            lang: 'zh-Hant',
+            requireInteraction: false,
+          },
         },
       })
       return { ok: true }

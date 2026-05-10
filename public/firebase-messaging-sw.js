@@ -15,18 +15,20 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-// 背景訊息：分頁未開或不在前景時觸發。Cloud Function 會送 data-only 訊息，
-// 由這裡決定通知標題、內文與點擊行為。
+// 背景訊息：分頁未開或不在前景時觸發。
+// 目前 Cloud Function 採用 notification + webpush payload，FCM SDK 會自動
+// 顯示通知，不會進到這個 callback。但若日後改為 data-only，這裡仍能接住。
 messaging.onBackgroundMessage((payload) => {
+  const n = payload.notification || {}
   const data = payload.data || {}
-  const title = data.title || '提醒'
-  const body = data.body || ''
+  const title = n.title || data.title || '提醒'
+  const body = n.body || data.body || ''
   self.registration.showNotification(title, {
     body,
     lang: 'zh-Hant',
     tag: data.tag || 'period-tracker',
     renotify: true,
-    data: { url: data.url || '/' },
+    data: { url: data.url || self.registration.scope || '/' },
   })
 })
 

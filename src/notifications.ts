@@ -289,32 +289,45 @@ let foregroundListenerInstalled = false
 
 /**
  * 註冊前景訊息監聽器：當分頁正在前景時，FCM 不會走 Service Worker 的
- * onBackgroundMessage，而是走這裡。我們手動呼叫 Notification 顯示，
- * 否則使用者按下「測試雲端推播」會看不到任何通知（雖然訊息其實送到了）。
+ * onBackgroundMessage，而是走這裡。
+ *
+ * 重要：行動瀏覽器（Android Chrome/Edge）禁止頁面直接 new Notification()，
+ * 必須透過 ServiceWorkerRegistration.showNotification()。所以這裡刻意走
+ * SW，桌機與行動裝置都能正常顯示。
  */
 function ensureForegroundMessageListener(): void {
   if (foregroundListenerInstalled) return
   foregroundListenerInstalled = true
   void getFirebaseMessaging().then((messaging) => {
     if (!messaging) return
-    onMessage(messaging, (payload) => {
+    onMessage(messaging, async (payload) => {
       if (
         typeof Notification === 'undefined' ||
         Notification.permission !== 'granted'
       ) {
         return
       }
+      const n = payload.notification || {}
       const data = payload.data || {}
-      const title = data.title || '提醒'
-      const body = data.body || ''
+      const title = n.title || data.title || '提醒'
+      const body = n.body || data.body || ''
+      const tag = data.tag || 'period-tracker'
+
       try {
-        new Notification(title, {
-          body,
-          lang: 'zh-Hant',
-          tag: data.tag || 'period-tracker',
-        })
+        const reg =
+          (await navigator.serviceWorker?.getRegistration()) ||
+          (await navigator.serviceWorker?.ready)
+        if (reg) {
+          await reg.showNotification(title, { body, lang: 'zh-Hant', tag })
+          return
+        }
       } catch {
-        /* 部分行動瀏覽器不允許在前景直接 new Notification，靜默忽略 */
+        /* 取不到 registration，下面 fallback */
+      }
+      try {
+        new Notification(title, { body, lang: 'zh-Hant', tag })
+      } catch {
+        /* 行動瀏覽器禁止；已盡力 */
       }
     })
   })
