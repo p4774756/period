@@ -6,7 +6,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { deleteToken, getToken } from 'firebase/messaging'
+import { deleteToken, getToken, onMessage } from 'firebase/messaging'
 import {
   isAtOrPastReminderTime,
   isBeforeEventEnd,
@@ -278,10 +278,46 @@ async function obtainFcmToken(): Promise<string | null> {
       vapidKey: FCM_VAPID_KEY,
       serviceWorkerRegistration: reg,
     })
+    if (token) ensureForegroundMessageListener()
     return token || null
   } catch {
     return null
   }
+}
+
+let foregroundListenerInstalled = false
+
+/**
+ * 註冊前景訊息監聽器：當分頁正在前景時，FCM 不會走 Service Worker 的
+ * onBackgroundMessage，而是走這裡。我們手動呼叫 Notification 顯示，
+ * 否則使用者按下「測試雲端推播」會看不到任何通知（雖然訊息其實送到了）。
+ */
+function ensureForegroundMessageListener(): void {
+  if (foregroundListenerInstalled) return
+  foregroundListenerInstalled = true
+  void getFirebaseMessaging().then((messaging) => {
+    if (!messaging) return
+    onMessage(messaging, (payload) => {
+      if (
+        typeof Notification === 'undefined' ||
+        Notification.permission !== 'granted'
+      ) {
+        return
+      }
+      const data = payload.data || {}
+      const title = data.title || '提醒'
+      const body = data.body || ''
+      try {
+        new Notification(title, {
+          body,
+          lang: 'zh-Hant',
+          tag: data.tag || 'period-tracker',
+        })
+      } catch {
+        /* 部分行動瀏覽器不允許在前景直接 new Notification，靜默忽略 */
+      }
+    })
+  })
 }
 
 /**
