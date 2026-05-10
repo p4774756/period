@@ -31,9 +31,13 @@ messaging.onBackgroundMessage((payload) => {
 })
 
 // 點擊通知：嘗試聚焦既有分頁，否則開新分頁。
+// 使用 self.registration.scope 作為預設目標 URL，避免硬寫 '/' 在子路徑部署下失效。
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = (event.notification.data && event.notification.data.url) || '/'
+  const target =
+    (event.notification.data && event.notification.data.url) ||
+    self.registration.scope ||
+    '/'
   event.waitUntil(
     (async () => {
       const allClients = await self.clients.matchAll({

@@ -104,11 +104,12 @@ export const scheduledSendReminders = onSchedule(
       pending.map((p) =>
         messaging.send({
           token: p.token,
+          // 不送 url；SW 會以 self.registration.scope 為預設目標，
+          // 避免在子路徑部署（例如 GitHub Pages /period/）時打開錯誤位置。
           data: {
             title: p.title,
             body: p.body,
             tag: p.kind,
-            url: '/',
           },
         }),
       ),

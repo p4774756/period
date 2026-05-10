@@ -255,8 +255,12 @@ async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
     return null
   }
+  // 部署在 GitHub Pages 的子路徑（例如 /period/）時，SW 必須跟著 base 走，
+  // 否則會 404。dev 模式下 BASE_URL 是 '/'，build 後是 vite.config.ts 設的值。
+  const base = import.meta.env.BASE_URL || '/'
+  const swPath = `${base}firebase-messaging-sw.js`
   try {
-    return await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    return await navigator.serviceWorker.register(swPath, { scope: base })
   } catch {
     return null
   }
