@@ -24,16 +24,19 @@ interface PendingMessage {
 }
 
 /**
- * 每 5 分鐘掃描一次 reminders 集合，將「觸發時間 <= now」的提醒透過 FCM 推送，
+ * 每小時掃描一次 reminders 集合，將「觸發時間 <= now」的提醒透過 FCM 推送，
  * 推送完將該欄位清空（避免重發）。前端在每次預測或設定變動時會重新覆寫文件，
  * 屆時又會產生下一次的觸發時間。
+ *
+ * 提醒時間與實際跳出通知之間最多可能延遲約一個小時（取決於排程與當日整點對齊）。
+ * 若需要更準時，可把 schedule 改回 every 5 minutes。
  *
  * 小規模專案（單一使用者）足夠便宜；若日後使用者增加，建議改為依時間排序的查詢
  * + 索引，並把 schedule 改為 onCall 觸發。
  */
 export const scheduledSendReminders = onSchedule(
   {
-    schedule: 'every 5 minutes',
+    schedule: 'every 1 hours',
     timeZone: 'Etc/UTC',
     region: 'asia-east1',
     memory: '256MiB',
