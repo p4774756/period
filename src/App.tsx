@@ -37,9 +37,10 @@ export default function App() {
     () =>
       computePrediction({
         periodDays: state.periodDays,
+        cycleAnchors: state.cycleAnchors,
         settings: state.settings,
       }),
-    [state.periodDays, state.settings],
+    [state.periodDays, state.cycleAnchors, state.settings],
   )
 
   /** 日曆：點空白日＝從該日起自動標記平均經期長度；點已標記日＝移除整段連續經期 */
@@ -58,6 +59,7 @@ export default function App() {
         return {
           ...s,
           periodDays: s.periodDays.filter((d) => !drop.has(d)),
+          cycleAnchors: s.cycleAnchors.filter((a) => a !== hit.start),
         }
       })
       return
@@ -82,7 +84,8 @@ export default function App() {
       for (let i = 0; i < blockLen; i++) {
         next.add(addDays(iso, i))
       }
-      return { ...s, periodDays: [...next].sort() }
+      const cycleAnchors = [...new Set([...s.cycleAnchors, iso])].sort()
+      return { ...s, periodDays: [...next].sort(), cycleAnchors }
     })
   }
 
@@ -97,6 +100,7 @@ export default function App() {
       return {
         ...s,
         periodDays: s.periodDays.filter((d) => !drop.has(d)),
+        cycleAnchors: s.cycleAnchors.filter((a) => a !== hit.start),
       }
     })
   }
@@ -156,6 +160,7 @@ export default function App() {
               }))
             }
             periodDays={state.periodDays}
+            cycleAnchors={state.cycleAnchors}
             dayNotes={state.dayNotes}
             prediction={prediction}
             onDayActivate={handleCalendarDay}

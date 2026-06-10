@@ -49,6 +49,7 @@ export function CalendarView({
   settings,
   onPatchCalendarSettings,
   periodDays,
+  cycleAnchors,
   dayNotes,
   prediction,
   onDayActivate,
@@ -59,6 +60,7 @@ export function CalendarView({
   settings: AppSettings
   onPatchCalendarSettings: (p: Partial<AppSettings>) => void
   periodDays: string[]
+  cycleAnchors: string[]
   dayNotes: Record<string, string>
   prediction: CyclePrediction
   onDayActivate: (iso: string) => void
@@ -303,7 +305,7 @@ export function CalendarView({
           const projectedDayIdx = dayNumberInProjected(iso)
           const cycleNum = cycleDayNumberForDate(
             iso,
-            periodDays,
+            cycleAnchors,
             prediction.avgCycleDays,
           )
           const showCycleNum =

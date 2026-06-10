@@ -33,6 +33,8 @@ export interface AppState {
   settings: AppSettings
   /** 標記為經期的日期 YYYY-MM-DD（本地日） */
   periodDays: string[]
+  /** 使用者點選的經期「開始日」；週期天數以此為準，不受連續標記合併影響 */
+  cycleAnchors: string[]
   /** 某日備註（選填），長按「記錄」編輯 */
   dayNotes: Record<string, string>
 }
@@ -55,6 +57,7 @@ export function createInitialState(): AppState {
   return {
     settings: { ...defaultSettings },
     periodDays: [],
+    cycleAnchors: [],
     dayNotes: {},
   }
 }

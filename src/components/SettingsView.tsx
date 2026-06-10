@@ -146,6 +146,7 @@ export function SettingsView({
               onChange({
                 settings: { ...defaultSettings },
                 periodDays: [],
+                cycleAnchors: [],
                 dayNotes: {},
               })
               setImportMsg('已清除本地紀錄。')

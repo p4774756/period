@@ -1,4 +1,5 @@
 import { createInitialState, defaultSettings, type AppState } from './types'
+import { cycleAnchorsFromPeriodDays } from './cycleMath'
 
 const STORAGE_KEY = 'period-tracker-v1'
 
@@ -15,6 +16,7 @@ function parseState(raw: unknown): AppState {
     return {
       ...base,
       periodDays: parsePeriodDays(raw.periodDays),
+      cycleAnchors: parseCycleAnchors(raw.cycleAnchors, parsePeriodDays(raw.periodDays)),
       dayNotes: parseDayNotes(raw.dayNotes),
     }
   }
@@ -25,9 +27,10 @@ function parseState(raw: unknown): AppState {
   } as AppState['settings']
 
   const periodDays = parsePeriodDays(raw.periodDays)
+  const cycleAnchors = parseCycleAnchors(raw.cycleAnchors, periodDays)
   const dayNotes = parseDayNotes(raw.dayNotes)
 
-  return { settings, periodDays, dayNotes }
+  return { settings, periodDays, cycleAnchors, dayNotes }
 }
 
 function parseDayNotes(v: unknown): Record<string, string> {
@@ -44,6 +47,16 @@ function parseDayNotes(v: unknown): Record<string, string> {
 function parsePeriodDays(v: unknown): string[] {
   if (!Array.isArray(v)) return []
   return v.filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x))
+}
+
+function parseCycleAnchors(v: unknown, periodDays: string[]): string[] {
+  if (Array.isArray(v)) {
+    const parsed = v.filter(
+      (x): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x),
+    )
+    if (parsed.length > 0) return [...new Set(parsed)].sort()
+  }
+  return cycleAnchorsFromPeriodDays(periodDays)
 }
 
 export function loadState(): AppState {

@@ -70,18 +70,48 @@ export function wouldCreateSeparatePeriodInSameMonth(
   return false
 }
 
-/** 該日在目前週期中的天數（最近一次經期開始為第 1 天）；無紀錄則 null */
+/** 從舊版經期標記推得週期起點（含異常長段的自動切分） */
+export function cycleAnchorsFromPeriodDays(periodDays: string[]): string[] {
+  const sorted = [...new Set(periodDays)].sort()
+  if (sorted.length === 0) return []
+
+  const anchors = new Set<string>()
+
+  for (const iso of sorted) {
+    if (!sorted.includes(addDays(iso, -1))) anchors.add(iso)
+  }
+
+  for (const r of periodRangesFromDays(periodDays)) {
+    const span = diffDays(r.start, r.end) + 1
+    if (span > 14) {
+      let cur = addDays(r.start, 28)
+      while (cur <= r.end) {
+        anchors.add(cur)
+        cur = addDays(cur, 28)
+      }
+    }
+  }
+
+  return [...anchors].sort()
+}
+
+function lastCycleAnchorAtOrBefore(
+  anchors: string[],
+  iso: string,
+): string | null {
+  const past = anchors.filter((a) => a <= iso)
+  return past.length > 0 ? past[past.length - 1] : null
+}
+
+/** 該日在目前週期中的天數；無起點則 null */
 export function cycleDayNumberForDate(
   iso: string,
-  periodDays: string[],
+  cycleAnchors: string[],
   avgCycleDays: number,
 ): number | null {
-  const ranges = periodRangesFromDays(periodDays)
-  if (ranges.length === 0) return null
-  const past = ranges.filter((r) => r.start <= iso)
-  if (past.length === 0) return null
-  const lastRecordedStart = past[past.length - 1].start
-  const cycleStart = effectiveCycleStart(lastRecordedStart, iso, avgCycleDays)
+  const anchor = lastCycleAnchorAtOrBefore(cycleAnchors, iso)
+  if (!anchor) return null
+  const cycleStart = effectiveCycleStart(anchor, iso, avgCycleDays)
   return diffDays(cycleStart, iso) + 1
 }
 
@@ -182,6 +212,7 @@ export function averageLastN(values: number[], n: number): number | null {
 
 export interface PredictionInput {
   periodDays: string[]
+  cycleAnchors: string[]
   settings: AppSettings
   /** 用於測試；預設今天 */
   asOf?: string
@@ -223,6 +254,7 @@ export function computePrediction(input: PredictionInput): CyclePrediction {
   const lastRange =
     relevantRanges.length > 0 ? relevantRanges[relevantRanges.length - 1] : null
   const lastPeriodStart = lastRange?.start ?? null
+  const cycleAnchor = lastCycleAnchorAtOrBefore(input.cycleAnchors, asOf)
 
   const onPeriod = ranges.some((r) => asOf >= r.start && asOf <= r.end)
 
@@ -230,9 +262,9 @@ export function computePrediction(input: PredictionInput): CyclePrediction {
   let predictedOvulation: string | null = null
   let cycleDay: number | null = null
 
-  if (lastPeriodStart) {
+  if (cycleAnchor) {
     const effectiveStart = effectiveCycleStart(
-      lastPeriodStart,
+      cycleAnchor,
       asOf,
       avgCycleDays,
     )
