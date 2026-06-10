@@ -301,7 +301,11 @@ export function CalendarView({
           }
           const periodDayIdx = dayNumberInPeriod(iso)
           const projectedDayIdx = dayNumberInProjected(iso)
-          const cycleNum = cycleDayNumberForDate(iso, periodDays)
+          const cycleNum = cycleDayNumberForDate(
+            iso,
+            periodDays,
+            prediction.avgCycleDays,
+          )
           const showCycleNum =
             settings.calendarShowCycleDay && cycleNum != null
           const showOvIc =

@@ -3,7 +3,6 @@ import {
   diffDays,
   enumerateInclusive,
   lastDayOfCalendarMonth,
-  parseISOToLocal,
   todayISO,
 } from './dates'
 import type { AppSettings } from './types'
@@ -75,13 +74,34 @@ export function wouldCreateSeparatePeriodInSameMonth(
 export function cycleDayNumberForDate(
   iso: string,
   periodDays: string[],
+  avgCycleDays: number,
 ): number | null {
   const ranges = periodRangesFromDays(periodDays)
   if (ranges.length === 0) return null
   const past = ranges.filter((r) => r.start <= iso)
   if (past.length === 0) return null
-  const cycleStart = past[past.length - 1].start
+  const lastRecordedStart = past[past.length - 1].start
+  const cycleStart = effectiveCycleStart(lastRecordedStart, iso, avgCycleDays)
   return diffDays(cycleStart, iso) + 1
+}
+
+/**
+ * 依平均週期往後推，找出 asOf 所屬週期的開始日。
+ * 推估經期日已過但未手動標記時，會自動視為新週期起點（可連續推進多個週期）。
+ */
+function effectiveCycleStart(
+  lastRecordedStart: string,
+  asOf: string,
+  avgCycleDays: number,
+): string {
+  const cycle = Math.max(1, avgCycleDays)
+  let start = lastRecordedStart
+  while (true) {
+    const next = addDays(start, cycle)
+    if (next <= asOf) start = next
+    else break
+  }
+  return start
 }
 
 /** 推估受孕期（排卵前 5 天至排卵後 1 日，僅供日曆顯示） */
@@ -211,9 +231,14 @@ export function computePrediction(input: PredictionInput): CyclePrediction {
   let cycleDay: number | null = null
 
   if (lastPeriodStart) {
-    nextPeriodStart = addDays(lastPeriodStart, avgCycleDays)
+    const effectiveStart = effectiveCycleStart(
+      lastPeriodStart,
+      asOf,
+      avgCycleDays,
+    )
+    nextPeriodStart = addDays(effectiveStart, avgCycleDays)
     predictedOvulation = addDays(nextPeriodStart, -14)
-    cycleDay = diffDays(lastPeriodStart, asOf) + 1
+    cycleDay = diffDays(effectiveStart, asOf) + 1
     if (cycleDay < 1) cycleDay = 1
   }
 
@@ -237,25 +262,3 @@ export function daysUntil(from: string, to: string | null): number | null {
   return n
 }
 
-/** 是否在 [reminderDay, eventDay) 之間顯示「已過提醒點」的推播（含 reminder 當天到事件日前） */
-export function reminderFireDate(eventISO: string, advanceDays: number): string {
-  return addDays(eventISO, -advanceDays)
-}
-
-export function isAtOrPastReminderTime(
-  now: Date,
-  reminderDayISO: string,
-  hour: number,
-  minute: number,
-): boolean {
-  const d = parseISOToLocal(reminderDayISO)
-  d.setHours(hour, minute, 0, 0)
-  return now.getTime() >= d.getTime()
-}
-
-/** 事件日當天結束前仍算在提醒週期內（避免漏推） */
-export function isBeforeEventEnd(now: Date, eventDayISO: string): boolean {
-  const end = parseISOToLocal(eventDayISO)
-  end.setHours(23, 59, 59, 999)
-  return now.getTime() <= end.getTime()
-}

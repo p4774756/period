@@ -9,7 +9,6 @@ import {
   periodRangesFromDays,
   wouldCreateSeparatePeriodInSameMonth,
 } from './cycleMath'
-import { checkAndNotify, syncReminderToCloud } from './notifications'
 import { loadState, saveState } from './storage'
 import type { AppState } from './types'
 import './App.css'
@@ -42,32 +41,6 @@ export default function App() {
       }),
     [state.periodDays, state.settings],
   )
-
-  useEffect(() => {
-    const tick = () => {
-      const { notificationSent } = checkAndNotify(state, prediction, new Date())
-      if (notificationSent !== state.notificationSent) {
-        setState((s) => ({ ...s, notificationSent }))
-      }
-    }
-    tick()
-    const id = window.setInterval(tick, 60_000)
-    const onVis = () => {
-      if (document.visibilityState === 'visible') tick()
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [state, prediction])
-
-  // 雲端推播：預測或相關設定變動時，重新計算下一次觸發時間並覆寫 Firestore。
-  // 只有在 cloudPushEnabled 時才會真的連線，未啟用者完全不接觸網路。
-  useEffect(() => {
-    if (!state.settings.cloudPushEnabled) return
-    void syncReminderToCloud(state, prediction)
-  }, [state, prediction])
 
   /** 日曆：點空白日＝從該日起自動標記平均經期長度；點已標記日＝移除整段連續經期 */
   function handleCalendarDay(iso: string) {
