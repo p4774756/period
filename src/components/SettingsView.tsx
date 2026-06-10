@@ -1,6 +1,5 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { disclaimerParagraphs, goalLabel } from '../copy'
-import { exportStateJson, importStateJson } from '../storage'
 import { defaultSettings, type AppState } from '../types'
 
 export function SettingsView({
@@ -12,8 +11,7 @@ export function SettingsView({
   onChange: (next: AppState) => void
   onBack: () => void
 }) {
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [dataMsg, setDataMsg] = useState<string | null>(null)
   const appVersion = __APP_VERSION__
 
   const s = state.settings
@@ -93,69 +91,22 @@ export function SettingsView({
         <h2>資料</h2>
         <button
           type="button"
-          className="secondary wide"
-          onClick={() => {
-            const blob = new Blob([exportStateJson(state)], {
-              type: 'application/json',
-            })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `period-backup-${Date.now()}.json`
-            a.click()
-            URL.revokeObjectURL(url)
-          }}
-        >
-          匯出備份（JSON）
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          hidden
-          onChange={async (e) => {
-            const f = e.target.files?.[0]
-            e.target.value = ''
-            if (!f) return
-            const text = await f.text()
-            const next = importStateJson(text)
-            if (!next) {
-              setImportMsg('匯入失敗：檔案格式不正確。')
-              return
-            }
-            onChange(next)
-            setImportMsg('匯入成功。')
-          }}
-        />
-        <button
-          type="button"
-          className="secondary wide"
-          onClick={() => fileRef.current?.click()}
-        >
-          匯入備份
-        </button>
-        <button
-          type="button"
           className="danger wide"
           onClick={() => {
-            if (
-              confirm(
-                '確定清除所有本地紀錄？此動作無法復原（除非已匯出備份）。',
-              )
-            ) {
+            if (confirm('確定清除所有本地紀錄？此動作無法復原。')) {
               onChange({
                 settings: { ...defaultSettings },
                 periodDays: [],
                 cycleAnchors: [],
                 dayNotes: {},
               })
-              setImportMsg('已清除本地紀錄。')
+              setDataMsg('已清除本地紀錄。')
             }
           }}
         >
           清除本地紀錄
         </button>
-        {importMsg && <p className="muted small">{importMsg}</p>}
+        {dataMsg && <p className="muted small">{dataMsg}</p>}
       </section>
 
       <section className="card disclaimer">

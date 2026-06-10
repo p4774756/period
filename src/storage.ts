@@ -76,15 +76,3 @@ export function saveState(state: AppState): void {
     /* 私密模式或容量滿 */
   }
 }
-
-export function exportStateJson(state: AppState): string {
-  return JSON.stringify(state, null, 2)
-}
-
-export function importStateJson(text: string): AppState | null {
-  try {
-    return parseState(JSON.parse(text) as unknown)
-  } catch {
-    return null
-  }
-}
